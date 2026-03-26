@@ -135,26 +135,47 @@ func (b *backendShim) Delete(ctx context.Context, key []byte, revision int64) (*
 	if err != nil {
 		return nil, err
 	}
-	var kvs []*mvccpb.KeyValue
-
-	if response.Kv != nil {
-		kvs = append(kvs, kvToEtcdKv(response.Kv))
-	}
-	deleteResponse := &etcdserverpb.TxnResponse{
-		Header:    txnHeader(int64(response.Header.Revision)),
+	headerRevision := int64(response.Header.Revision)
+	resp := &etcdserverpb.TxnResponse{
+		Header:    txnHeader(headerRevision),
 		Succeeded: response.Succeeded,
-		Responses: []*etcdserverpb.ResponseOp{
+	}
+	// Keep etcd txn semantics:
+	// 1) delete success branch returns DeleteRange response
+	// 2) compare-failed branch returns Range response (existing kv)
+	if response.Succeeded {
+		deleteRangeResp := &etcdserverpb.DeleteRangeResponse{
+			Header: txnHeader(headerRevision),
+		}
+		if response.Kv != nil {
+			deleteRangeResp.Deleted = 1
+			deleteRangeResp.PrevKvs = append(deleteRangeResp.PrevKvs, kvToEtcdKv(response.Kv))
+		}
+		resp.Responses = []*etcdserverpb.ResponseOp{
 			{
-				Response: &etcdserverpb.ResponseOp_ResponseRange{
-					ResponseRange: &etcdserverpb.RangeResponse{
-						Header: txnHeader(int64(response.Header.Revision)),
-						Kvs:    kvs,
-					},
+				Response: &etcdserverpb.ResponseOp_ResponseDeleteRange{
+					ResponseDeleteRange: deleteRangeResp,
 				},
+			},
+		}
+		return resp, nil
+	}
+
+	rangeResp := &etcdserverpb.RangeResponse{
+		Header: txnHeader(headerRevision),
+	}
+	if response.Kv != nil {
+		rangeResp.Kvs = append(rangeResp.Kvs, kvToEtcdKv(response.Kv))
+		rangeResp.Count = int64(len(rangeResp.Kvs))
+	}
+	resp.Responses = []*etcdserverpb.ResponseOp{
+		{
+			Response: &etcdserverpb.ResponseOp_ResponseRange{
+				ResponseRange: rangeResp,
 			},
 		},
 	}
-	return deleteResponse, nil
+	return resp, nil
 }
 
 func (b *backendShim) Update(ctx context.Context, rev int64, key []byte, value []byte, lease int64) (*etcdserverpb.TxnResponse, error) {
