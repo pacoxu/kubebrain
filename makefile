@@ -11,3 +11,7 @@ tikv:
 .PHONY: test-coverage
 test-coverage:
 	@go test -coverprofile=coverage.out -cover=true -coverpkg=./pkg/... ./...
+
+.PHONY: e2e-kind
+e2e-kind:
+	@bash ./test/e2e/kind/run.sh
