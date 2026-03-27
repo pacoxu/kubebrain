@@ -20,6 +20,7 @@ KUBEBRAIN_INFO_PORT="${KUBEBRAIN_INFO_PORT:-3381}"
 E2E_NAMESPACE="${E2E_NAMESPACE:-kb-e2e}"
 KEEP_CLUSTER="${KEEP_CLUSTER:-false}"
 SKIP_BUILD="${SKIP_BUILD:-false}"
+KUBEBRAIN_KEY_PREFIX="${KUBEBRAIN_KEY_PREFIX:-}"
 
 CONTROL_PLANE_NODE=""
 
@@ -39,7 +40,7 @@ dump_debug() {
   kubectl --context "${KIND_CONTEXT}" get nodes -o wide || true
   kubectl --context "${KIND_CONTEXT}" get pods -A || true
   if [[ -n "${CONTROL_PLANE_NODE}" ]]; then
-    docker exec "${CONTROL_PLANE_NODE}" sh -lc "tail -n 200 /var/log/kubebrain.log" || true
+    docker exec "${CONTROL_PLANE_NODE}" sh -lc "if [ -f /var/log/kubebrain.log ]; then tail -n 200 /var/log/kubebrain.log; else echo 'kubebrain log file not found'; fi" || true
   fi
 }
 
@@ -58,6 +59,11 @@ require_cmd kind
 require_cmd kubectl
 require_cmd docker
 require_cmd make
+
+if [[ -n "${KUBEBRAIN_KEY_PREFIX}" && "${KUBEBRAIN_KEY_PREFIX}" == */ ]]; then
+  echo "invalid KUBEBRAIN_KEY_PREFIX=${KUBEBRAIN_KEY_PREFIX}: trailing '/' is not allowed" >&2
+  exit 1
+fi
 
 if kind get clusters | grep -qx "${CLUSTER_NAME}"; then
   log "cluster ${CLUSTER_NAME} already exists, recreating"
@@ -111,15 +117,32 @@ log "starting kube-brain inside kind node"
 docker exec "${CONTROL_PLANE_NODE}" sh -lc "
 set -eu
 mkdir -p /var/lib/kubebrain /var/log
-pkill -f '/usr/local/bin/kube-brain' >/dev/null 2>&1 || true
+if pgrep -x kube-brain >/dev/null 2>&1; then
+  pkill -x kube-brain || true
+fi
 nohup /usr/local/bin/kube-brain \
   --data-dir=/var/lib/kubebrain \
-  --key-prefix='/' \
+  --key-prefix='${KUBEBRAIN_KEY_PREFIX}' \
   --compatible-with-etcd=true \
   --port=${KUBEBRAIN_PORT} \
   --peer-port=${KUBEBRAIN_PEER_PORT} \
   --info-port=${KUBEBRAIN_INFO_PORT} \
   >/var/log/kubebrain.log 2>&1 &
+"
+
+docker exec "${CONTROL_PLANE_NODE}" sh -lc "
+set -eu
+for _ in \$(seq 1 20); do
+  if pgrep -x kube-brain >/dev/null 2>&1; then
+    exit 0
+  fi
+  sleep 1
+done
+echo 'kube-brain process did not start' >&2
+if [ -f /var/log/kubebrain.log ]; then
+  tail -n 200 /var/log/kubebrain.log >&2
+fi
+exit 1
 "
 
 log "patching kube-apiserver manifest to use kube-brain"
