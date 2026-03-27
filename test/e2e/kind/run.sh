@@ -6,9 +6,12 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 cd "${ROOT_DIR}"
 
 CLUSTER_NAME="${CLUSTER_NAME:-kb-e2e}"
-K8S_IMAGE="${K8S_IMAGE:-kindest/node:v1.35.0}"
+K8S_IMAGE="${K8S_IMAGE:-m.daocloud.io/docker.io/kindest/node:v1.35.0}"
 KIND_CONTEXT="kind-${CLUSTER_NAME}"
 BUILD_TARGET="${BUILD_TARGET:-badger}"
+KUBEBRAIN_GOOS="${KUBEBRAIN_GOOS:-linux}"
+KUBEBRAIN_GOARCH="${KUBEBRAIN_GOARCH:-}"
+KUBEBRAIN_CGO_ENABLED="${KUBEBRAIN_CGO_ENABLED:-0}"
 
 KUBEBRAIN_PORT="${KUBEBRAIN_PORT:-3379}"
 KUBEBRAIN_PEER_PORT="${KUBEBRAIN_PEER_PORT:-3380}"
@@ -62,21 +65,42 @@ if kind get clusters | grep -qx "${CLUSTER_NAME}"; then
 fi
 
 log "creating kind cluster ${CLUSTER_NAME} (${K8S_IMAGE})"
-kind create cluster --name "${CLUSTER_NAME}" --image "${K8S_IMAGE}"
-
-if [[ "${SKIP_BUILD}" != "true" ]]; then
-  log "building kube-brain binary using make ${BUILD_TARGET}"
-  make "${BUILD_TARGET}"
+kind_create_args=(create cluster --name "${CLUSTER_NAME}")
+if [[ -n "${K8S_IMAGE}" ]]; then
+  kind_create_args+=(--image "${K8S_IMAGE}")
 fi
-
-if [[ ! -x "./bin/kube-brain" ]]; then
-  echo "binary not found or not executable: ./bin/kube-brain" >&2
-  exit 1
-fi
+log "running: kind ${kind_create_args[*]}"
+kind "${kind_create_args[@]}"
 
 CONTROL_PLANE_NODE="$(kind get nodes --name "${CLUSTER_NAME}" | grep 'control-plane' | head -n1)"
 if [[ -z "${CONTROL_PLANE_NODE}" ]]; then
   echo "failed to find kind control-plane node" >&2
+  exit 1
+fi
+
+if [[ "${SKIP_BUILD}" != "true" ]]; then
+  if [[ -z "${KUBEBRAIN_GOARCH}" ]]; then
+    node_arch_raw="$(docker exec "${CONTROL_PLANE_NODE}" uname -m | tr -d '\r\n')"
+    case "${node_arch_raw}" in
+    aarch64 | arm64)
+      KUBEBRAIN_GOARCH="arm64"
+      ;;
+    x86_64 | amd64)
+      KUBEBRAIN_GOARCH="amd64"
+      ;;
+    *)
+      echo "unsupported node architecture: ${node_arch_raw}" >&2
+      exit 1
+      ;;
+    esac
+  fi
+  log "building kube-brain binary using make ${BUILD_TARGET}"
+  log "build target platform: GOOS=${KUBEBRAIN_GOOS} GOARCH=${KUBEBRAIN_GOARCH} CGO_ENABLED=${KUBEBRAIN_CGO_ENABLED}"
+  GOOS="${KUBEBRAIN_GOOS}" GOARCH="${KUBEBRAIN_GOARCH}" CGO_ENABLED="${KUBEBRAIN_CGO_ENABLED}" make "${BUILD_TARGET}"
+fi
+
+if [[ ! -x "./bin/kube-brain" ]]; then
+  echo "binary not found or not executable: ./bin/kube-brain" >&2
   exit 1
 fi
 
