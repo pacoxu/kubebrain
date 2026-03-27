@@ -15,3 +15,7 @@ test-coverage:
 .PHONY: e2e-kind
 e2e-kind:
 	bash ./test/e2e/kind/run.sh
+
+.PHONY: bench-kind-compare
+bench-kind-compare:
+	bash ./test/benchmark/kind/compare.sh
