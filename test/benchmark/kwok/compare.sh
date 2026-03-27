@@ -314,10 +314,12 @@ run_case() {
 
   local start_ms
   start_ms="$(now_ms)"
-  local running elapsed_ms status
-  if read -r running elapsed_ms < <(wait_running_pods "${context}" "${PODS}" "${BENCH_NAMESPACE}" "${start_ms}"); then
+  local running elapsed_ms status wait_out
+  if wait_out="$(wait_running_pods "${context}" "${PODS}" "${BENCH_NAMESPACE}" "${start_ms}")"; then
+    read -r running elapsed_ms <<<"${wait_out}"
     status="ok"
   else
+    read -r running elapsed_ms <<<"${wait_out}"
     status="timeout"
   fi
 
