@@ -16,6 +16,10 @@ test-coverage:
 e2e-kind:
 	bash ./test/e2e/kind/run.sh
 
+.PHONY: e2e-kind-tikv
+e2e-kind-tikv:
+	BUILD_TARGET=tikv bash ./test/e2e/kind/run.sh
+
 .PHONY: bench-kind-compare
 bench-kind-compare:
 	bash ./test/benchmark/kind/compare.sh
