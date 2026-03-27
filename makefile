@@ -19,3 +19,7 @@ e2e-kind:
 .PHONY: bench-kind-compare
 bench-kind-compare:
 	bash ./test/benchmark/kind/compare.sh
+
+.PHONY: bench-kwok-compare
+bench-kwok-compare:
+	bash ./test/benchmark/kwok/compare.sh
