@@ -110,6 +110,19 @@ func (s *RPCServer) Watch(ws etcdserverpb.Watch_WatchServer) error {
 			s.metricCli.EmitCounter("watch.client.cancel", 1)
 			klog.InfoS("receive watch cancel request", "id", w.id, "watchID", cancelRequest.GetWatchId())
 			w.Cancel(msg.GetCancelRequest().WatchId, nil, false)
+		} else if msg.GetProgressRequest() != nil {
+			s.metricCli.EmitCounter("watch.request.progress", 1)
+			revision := int64(s.backend.GetCurrentRevision())
+			// etcd uses watch ID -1 to indicate a broadcast progress notification.
+			if err := ws.Send(&etcdserverpb.WatchResponse{
+				Header: &etcdserverpb.ResponseHeader{
+					Revision: revision,
+				},
+				WatchId: -1,
+			}); err != nil {
+				klog.ErrorS(err, "watch send progress response err", "watcher", w.id, "revision", revision)
+				return err
+			}
 		} else {
 			s.metricCli.EmitCounter("watch.request.unsupported", 1)
 			klog.Info("watch receive message unsupported type")

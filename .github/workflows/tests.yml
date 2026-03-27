@@ -1,23 +1,61 @@
 name: Tests
 
-on: [pull_request]
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - support-v1.35
+  workflow_dispatch:
 
 jobs:
-  test:
+  unit:
+    name: Unit & Coverage
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v3
+      - name: Check out code
+        uses: actions/checkout@v4
 
       - name: Set up Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v5
         with:
-          go-version: 1.18
+          go-version: "1.25.x"
 
       - name: Build
         run: go build -v ./...
 
-      - name: Test
+      - name: Unit tests with coverage
         run: make test-coverage
 
-      - name: Codecov
-        uses: codecov/codecov-action@v3.1.0
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          fail_ci_if_error: false
+
+  e2e-kind:
+    name: Kind E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: unit
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.x"
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Set up kind
+        uses: engineerd/setup-kind@v0.6.2
+        with:
+          version: v0.24.0
+
+      - name: Run kind e2e
+        env:
+          K8S_IMAGE: kindest/node:v1.35.0
+        run: make e2e-kind

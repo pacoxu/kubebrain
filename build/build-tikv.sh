@@ -17,6 +17,8 @@ BIN_NAME="kube-brain"
 BIN_DIR="./bin"
 WORK_DIR="$(cd "$(dirname "${BASH_SOURCE}")/.." && pwd -P)"
 
+set -euo pipefail
+
 echo ${WORK_DIR}
 cd ${WORK_DIR} || exit
 mkdir -p $BIN_DIR

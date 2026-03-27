@@ -43,7 +43,7 @@ func (b *backend) Create(ctx context.Context, put *proto.CreateRequest) (resp *p
 			err)
 	}()
 
-	revision, err := b.create(ctx, put.Key, put.Value)
+	revision, err := b.create(ctx, put.Key, put.Value, put.Lease)
 	b.notify(ctx, put.Key, put.Value, revision, 0, err == nil, proto.Event_CREATE, err)
 	if errors.Is(err, storage.ErrCASFailed) {
 		return &proto.CreateResponse{
@@ -61,14 +61,18 @@ func (b *backend) Create(ctx context.Context, put *proto.CreateRequest) (resp *p
 	}, nil
 }
 
-func (b *backend) create(ctx context.Context, key []byte, value []byte) (revision uint64, error error) {
+func (b *backend) create(ctx context.Context, key []byte, value []byte, lease int64) (revision uint64, error error) {
 	revision, err := b.deal(0)
 	if err != nil {
 		return 0, err
 	}
 
+	ttl := lease
 	if bytes.Contains(key, events) {
-		err = b.creator.CreateWithTTL(ctx, key, value, revision, eventsTTL)
+		ttl = eventsTTL
+	}
+	if ttl != 0 {
+		err = b.creator.CreateWithTTL(ctx, key, value, revision, ttl)
 	} else {
 		err = b.creator.Create(ctx, key, value, revision)
 	}
@@ -211,7 +215,7 @@ func (b *backend) Update(ctx context.Context, r *proto.UpdateRequest) (resp *pro
 	)
 	var curRev uint64
 	if prevRev == 0 {
-		curRev, err = b.create(ctx, key, value)
+		curRev, err = b.create(ctx, key, value, lease)
 		b.notify(ctx, key, value, curRev, prevRev, err == nil, proto.Event_CREATE, err)
 	} else {
 		curRev, err = b.update(ctx, prevRev, key, value, lease)

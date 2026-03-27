@@ -13,8 +13,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+if [[ "${DEBUG:-0}" == "1" ]]; then
+  set -x
+fi
+
 export pkg="github.com/kubewharf/kubebrain/cmd/version"
-export version=$(git describe --abbrev=0 --tags || git rev-parse --abbrev-ref HEAD) # tag or branch
+
+# Prefer the latest tag. Fall back to branch name without noisy git errors.
+if version_from_tag=$(git describe --abbrev=0 --tags 2>/dev/null); then
+  export version="$version_from_tag"
+else
+  export version=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
+fi
 export sha=$(git rev-parse --short HEAD)                                            # commit id
 export go_version=$(go env GOVERSION)
 export go_os=$(go env GOOS)
