@@ -28,11 +28,11 @@ We investigated some of existing distributed storage systems, and analyzed the p
 - [Benchmark](./docs/benchmark.md)
 
 ## TODO
-- [ ] Guarantee consistence in critical cases
-- [ ] Optimize storage engine interface
-- [ ] Optimize unit test code, add use cases and error injection
-- [ ] [Jepsen Test](https://jepsen.io/)
-- [ ] Implement Proxy to make it more scalable
+- [ ] [Guarantee consistence in critical cases](https://github.com/pacoxu/kubebrain/issues/3)
+- [ ] [Optimize storage engine interface](https://github.com/pacoxu/kubebrain/issues/4)
+- [ ] [Optimize unit test code, add use cases and error injection](https://github.com/pacoxu/kubebrain/issues/5)
+- [ ] [Jepsen Test](https://github.com/pacoxu/kubebrain/issues/6)
+- [ ] [Implement Proxy to make it more scalable](https://github.com/pacoxu/kubebrain/issues/7)
 
 
 ## Contribution
@@ -51,4 +51,3 @@ Please check [Code of Conduct](CODE_OF_CONDUCT.md) for more details.
 ## License
 
 This project is licensed under the [Apache-2.0 License](LICENSE).
-
