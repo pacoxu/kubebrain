@@ -34,12 +34,12 @@
 
 # TODO
 
-- [ ] 优化存储引擎接口
-- [ ] 极端情况下的一致性保证
+- [ ] [优化存储引擎接口](https://github.com/pacoxu/kubebrain/issues/4)
+- [ ] [极端情况下的一致性保证](https://github.com/pacoxu/kubebrain/issues/3)
 - [ ] 内置的逻辑时钟
-- [ ] 优化单元测试代码，增加用例和错误注入
-- [ ] [Jepsen测试](https://jepsen.io/)
-- [ ] 实现Proxy功能
+- [ ] [优化单元测试代码，增加用例和错误注入](https://github.com/pacoxu/kubebrain/issues/5)
+- [ ] [Jepsen测试](https://github.com/pacoxu/kubebrain/issues/6)
+- [ ] [实现Proxy功能](https://github.com/pacoxu/kubebrain/issues/7)
 
 # 贡献代码
 
