@@ -23,3 +23,7 @@ bench-kind-compare:
 .PHONY: bench-kwok-compare
 bench-kwok-compare:
 	bash ./test/benchmark/kwok/compare.sh
+
+.PHONY: jepsen
+jepsen:
+	bash ./test/jepsen/run.sh
