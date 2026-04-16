@@ -143,12 +143,9 @@ jobs:
 
       - name: Build kind node image from enhanced-k8s source
         run: |
-          FAKE_GOPATH="$(mktemp -d)"
-          mkdir -p "${FAKE_GOPATH}/src/k8s.io"
           SOURCE_DIR="$(find "${GITHUB_WORKSPACE}/enhanced-k8s/_source" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
           test -n "${SOURCE_DIR}"
-          cp -r "${SOURCE_DIR}" "${FAKE_GOPATH}/src/k8s.io/kubernetes"
-          GOPATH="${FAKE_GOPATH}" kind build node-image --image "${ENHANCED_K8S_IMAGE}"
+          kind build node-image "${SOURCE_DIR}" --image "${ENHANCED_K8S_IMAGE}"
 
       - name: Run kind e2e on enhanced-k8s
         env:
