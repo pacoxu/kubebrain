@@ -28,6 +28,22 @@ log() {
   printf '[kind-e2e] %s\n' "$*"
 }
 
+kubectl_retry() {
+  local attempts="${KUBECTL_RETRY_ATTEMPTS:-10}"
+  local sleep_sec="${KUBECTL_RETRY_SLEEP_SEC:-2}"
+  local i=1
+  while ((i <= attempts)); do
+    if kubectl --context "${KIND_CONTEXT}" "$@"; then
+      return 0
+    fi
+    if ((i == attempts)); then
+      return 1
+    fi
+    sleep "${sleep_sec}"
+    ((i++))
+  done
+}
+
 require_cmd() {
   if ! command -v "$1" >/dev/null 2>&1; then
     echo "missing required command: $1" >&2
@@ -179,8 +195,8 @@ watch_log="$(mktemp)"
 kubectl --context "${KIND_CONTEXT}" -n "${E2E_NAMESPACE}" get configmaps -w --request-timeout=20s >"${watch_log}" 2>&1 &
 watch_pid=$!
 sleep 2
-kubectl --context "${KIND_CONTEXT}" -n "${E2E_NAMESPACE}" create configmap cm-watch --from-literal=x=1
-kubectl --context "${KIND_CONTEXT}" -n "${E2E_NAMESPACE}" delete configmap cm-watch --wait=true
+kubectl_retry -n "${E2E_NAMESPACE}" create configmap cm-watch --from-literal=x=1
+kubectl_retry -n "${E2E_NAMESPACE}" delete configmap cm-watch --wait=true
 wait "${watch_pid}" || true
 if ! grep -q 'cm-watch' "${watch_log}"; then
   echo "watch output does not contain cm-watch" >&2
