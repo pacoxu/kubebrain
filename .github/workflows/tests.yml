@@ -137,11 +137,16 @@ jobs:
           path: enhanced-k8s
           fetch-depth: 0
 
-      - name: Build kind node image from enhanced-k8s
+      - name: Prepare enhanced-k8s source
+        working-directory: enhanced-k8s
+        run: make source
+
+      - name: Build kind node image from enhanced-k8s source
         run: |
-          kind build node-image \
-            "${GITHUB_WORKSPACE}/enhanced-k8s" \
-            --image "${ENHANCED_K8S_IMAGE}"
+          FAKE_GOPATH="$(mktemp -d)"
+          mkdir -p "${FAKE_GOPATH}/src/k8s.io"
+          cp -r "${GITHUB_WORKSPACE}/enhanced-k8s/_source/"* "${FAKE_GOPATH}/src/k8s.io/kubernetes"
+          GOPATH="${FAKE_GOPATH}" kind build node-image --image "${ENHANCED_K8S_IMAGE}"
 
       - name: Run kind e2e on enhanced-k8s
         env:
