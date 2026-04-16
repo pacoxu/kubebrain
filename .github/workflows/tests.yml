@@ -95,7 +95,7 @@ jobs:
       - name: Build kind node image from enhanced-kubernetes
         run: |
           kind build node-image \
-            --kube-root ./enhanced-kubernetes \
+            "${GITHUB_WORKSPACE}/enhanced-kubernetes" \
             --image "${ENHANCED_K8S_IMAGE}"
 
       - name: Run kind e2e on enhanced-kubernetes
