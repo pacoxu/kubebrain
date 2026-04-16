@@ -91,6 +91,7 @@ jobs:
           repository: kubewharf/kubernetes
           ref: ${{ env.ENHANCED_K8S_REF }}
           path: enhanced-kubernetes
+          fetch-depth: 0
 
       - name: Build kind node image from enhanced-kubernetes
         run: |
